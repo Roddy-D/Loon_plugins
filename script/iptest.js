@@ -71,23 +71,22 @@ function gradeIpapi(j) {
 
 // ipapi.is 判断 IP 类型
 function ipapiHostingText(j) {
-  if (!j) return "IP类型：未知（获取失败）";
+  if (!j) return "IP类型（ipapi）：未知（获取失败）";
   
   const isDc = j.is_datacenter === true;
   const isMobile = j.is_mobile === true;
   const asnType = String(j.asn?.type || "").toLowerCase();
   const companyType = String(j.company?.type || "").toLowerCase();
   
-  if (isDc) return `IP类型：🏢 数据中心/服务器 (datacenter)`;
-  if (isMobile) return `IP类型：📱 蜂窝移动网络 (mobile)`;
-  if (asnType === "hosting" || companyType === "hosting") return `IP类型：🏢 托管服务器 (hosting)`;
-  if (asnType === "isp" || companyType === "isp") return `IP类型：🏠 家庭宽带 (ISP)`;
-  if (asnType === "business" || companyType === "business") return `IP类型：🏬 商业宽带 (business)`;
-  if (asnType === "education" || companyType === "education") return `IP类型：🎓 教育网络 (education)`;
-  if (asnType === "government" || companyType === "government") return `IP类型：🏛️ 政府网络 (government)`;
+  if (isMobile) return `IP类型（ipapi，可能是）：📱 蜂窝移动网络 (mobile)`;
+  if (asnType === "hosting" || companyType === "hosting") return `IP类型（ipapi，可能是）：🏢 托管服务器 (hosting)`;
+  if (asnType === "isp" || companyType === "isp") return `IP类型（ipapi，可能是）：🏠 家庭宽带 (ISP)`;
+  if (asnType === "business" || companyType === "business") return `IP类型（ipapi，可能是）：🏬 商业宽带 (business)`;
+  if (asnType === "education" || companyType === "education") return `IP类型（ipapi，可能是）：🎓 教育网络 (education)`;
+  if (asnType === "government" || companyType === "government") return `IP类型（ipapi，可能是）：🏛️ 政府网络 (government)`;
   
   const typeInfo = asnType || companyType || "unknown";
-  return `IP类型：❓ ${typeInfo}`;
+  return `IP类型（ipapi）：❓ ${typeInfo}`;
 }
 
 // DB-IP - 抓网页解析
