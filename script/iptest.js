@@ -1,5 +1,5 @@
 const IPPURE_URL = "https://my.ippure.com/v1/info";
-const IPV4_API = "https://api4.ipify.org?format=json";
+const IPV4_API = "http://ip-api.com/json?lang=zh-CN";
 
 // 从环境参数获取节点名
 const nodeName = $environment.params.node;
@@ -182,7 +182,8 @@ async function fetchIpwhois(ip) {
   try {
     const { data: ipv4Data } = await httpGet(IPV4_API);
     const ipv4Json = safeJsonParse(ipv4Data);
-    ip = ipv4Json?.ip || String(ipv4Data || "").trim();
+    // ip-api.com 返回的 IP 在 query 字段中
+    ip = ipv4Json?.query || ipv4Json?.ip || String(ipv4Data || "").trim();
   } catch (_) {}
 
   if (!ip) {
