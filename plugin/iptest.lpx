@@ -1,2 +1,10 @@
+#!name=节点质量查询
+#!desc=适用于Loon的节点质量查询。在节点（策略）页面选择一个节点长按，出现菜单后点击。
+#!openUrl=
+#!author=Roddy-D[https://github.com/Roddy-D]
+#!tag=节点质量
+#!icon=https://raw.githubusercontent.com/Roddy-D/Loon_plugins/refs/heads/main/icon/iptest.png
+#!date=2025-12-15
+
 [Script]
-generic script-path=https://raw.githubusercontent.com/Roddy-D/Loon_plugins/refs/heads/main/script/iptest.js, timeout=10, tag=节点质量查询,img-url=globe.asia.australia.system
+generic script-path=https://raw.githubusercontent.com/Roddy-D/Loon_plugins/refs/heads/main/script/iptest.js, timeout=15, tag=节点质量查询,img-url=globe.asia.australia.system
