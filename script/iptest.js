@@ -47,7 +47,7 @@ function gradeIppure(score) {
   return { sev: 0, text: `IPPure：✅ 低风险 (${s})` };
 }
 
-// ipapi.is - 免费直接可用
+// ipapi.is
 function gradeIpapi(j) {
   if (!j || !j.company) return { sev: 2, text: "ipapi：获取失败" };
   
@@ -69,7 +69,7 @@ function gradeIpapi(j) {
   return { sev, text: `ipapi：${label} (${pct}, ${level})` };
 }
 
-// IP2Location.io - 从网页抓取数据解析
+// IP2Location.io
 function parseIp2locationIo(data) {
   if (!data) return { usageType: null, fraudScore: null };
   const usageType = data.as_usage_type || null;
@@ -77,7 +77,6 @@ function parseIp2locationIo(data) {
   return { usageType, fraudScore };
 }
 
-// IP2Location.io 评分
 function gradeIp2locationIo(fraudScore) {
   const s = toInt(fraudScore);
   if (s === null) return { sev: -1, text: null };
@@ -86,7 +85,6 @@ function gradeIp2locationIo(fraudScore) {
   return { sev: 0, text: `IP2Location.io：✅ 低风险 (${s})` };
 }
 
-// IP2Location.io 机房判断（使用 as_usage_type 字段）
 function ip2locationHostingText(usageType) {
   const source = "（来源:IP2Location）";
   if (!usageType) return `IP类型：未知（获取失败）${source}`;
@@ -124,15 +122,14 @@ function ip2locationHostingText(usageType) {
   return `IP类型：❓ ${usageType} ${source}`;
 }
 
-// 判断 IP 类型是否为风险类型（数据中心/服务器/商业宽带）
+// 判断 IP 类型
 function isRiskyUsageType(usageType) {
   if (!usageType) return false;
   const usage = String(usageType).toUpperCase();
-  // DCH=数据中心, WEB=Web托管, SES=搜索引擎, COM=商业宽带, CDN
   return usage.startsWith("DCH") || usage === "WEB" || usage === "SES" || usage.startsWith("COM") || usage.startsWith("CDN");
 }
 
-// DB-IP - 抓网页解析
+// DB-IP
 function gradeDbip(html) {
   if (!html) return { sev: 2, text: "DB-IP：获取失败" };
   const riskTextMatch = html.match(/Estimated threat level for this IP address is\s*<span[^>]*>\s*([^<\s]+)\s*</i);
@@ -145,10 +142,9 @@ function gradeDbip(html) {
   return { sev: 2, text: `DB-IP：${riskText}` };
 }
 
-// Scamalytics - 抓网页解析
+// Scamalytics
 function gradeScamalytics(html) {
   if (!html) return { sev: 2, text: "Scamalytics：获取失败" };
-  // 页面上有 "Fraud Score: XX" 或 class="score" 里的数字
   const scoreMatch = html.match(/Fraud\s*Score[:\s]*(\d+)/i) 
     || html.match(/class="score"[^>]*>(\d+)/i)
     || html.match(/"score"\s*:\s*(\d+)/i);
@@ -162,7 +158,7 @@ function gradeScamalytics(html) {
   return { sev: 0, text: `Scamalytics：✅ 低风险 (${s})` };
 }
 
-// IPWhois - 免费 API
+// IPWhois
 function gradeIpwhois(j) {
   if (!j || !j.security) return { sev: 2, text: "IPWhois：获取失败" };
   
@@ -192,25 +188,21 @@ function flagEmoji(code) {
 // 各家 API 请求
 
 async function fetchIpapi(ip) {
-  // https://api.ipapi.is/?q=IP - 免费，无需 key
   const { data } = await httpGet(`https://api.ipapi.is/?q=${encodeURIComponent(ip)}`);
   return safeJsonParse(data);
 }
 
 async function fetchDbipHtml(ip) {
-  // https://db-ip.com/IP - 抓网页
   const { data } = await httpGet(`https://db-ip.com/${encodeURIComponent(ip)}`);
   return String(data);
 }
 
 async function fetchScamalyticsHtml(ip) {
-  // https://scamalytics.com/ip/IP - 抓网页
   const { data } = await httpGet(`https://scamalytics.com/ip/${encodeURIComponent(ip)}`);
   return String(data);
 }
 
 async function fetchIpwhois(ip) {
-  // https://ipwhois.io/widget?ip=IP - 免费
   const { data } = await httpGet(`https://ipwhois.io/widget?ip=${encodeURIComponent(ip)}&lang=en`, {
     "Referer": "https://ipwhois.io/",
     "Accept": "*/*",
@@ -219,15 +211,12 @@ async function fetchIpwhois(ip) {
 }
 
 async function fetchIp2locationIo(ip) {
-  // 直接访问 ip2location.io 网页，抓取页面中的数据
   const { data } = await httpGet(`https://www.ip2location.io/${encodeURIComponent(ip)}`);
   const html = String(data);
   
-  // 从 HTML 中提取 Usage Type: (DCH) → "DCH"
   const usageMatch = html.match(/Usage\s*Type<\/label>\s*<p[^>]*>\s*\(([A-Z]+)\)/i);
   const usageType = usageMatch ? usageMatch[1] : null;
   
-  // 从 HTML 中提取 Fraud Score: 3 → 3
   const fraudMatch = html.match(/Fraud\s*Score<\/label>\s*<p[^>]*>\s*(\d+)/i);
   const fraudScore = fraudMatch ? toInt(fraudMatch[1]) : null;
   
@@ -241,7 +230,6 @@ async function fetchIp2locationIo(ip) {
   try {
     const { data: ipv4Data } = await httpGet(IPV4_API);
     const ipv4Json = safeJsonParse(ipv4Data);
-    // ip-api.com 返回的 IP 在 query 字段中
     ip = ipv4Json?.query || ipv4Json?.ip || String(ipv4Data || "").trim();
   } catch (_) {}
 
@@ -284,14 +272,12 @@ async function fetchIp2locationIo(ip) {
   const city = ipapiData.location?.city || "";
   const flag = flagEmoji(countryCode);
 
-  // 解析 IP2Location.io 数据（IP 类型 + 评分）
   const ip2loc = parseIp2locationIo(ok.ip2locIo);
   const hostingLine = ip2locationHostingText(ip2loc.usageType);
 
   const grades = [];
   grades.push(gradeIppure(ippureFraudScore));
   grades.push(gradeIpapi(ok.ipapi));
-  // IP2Location.io 评分（如果有）
   const ip2locGrade = gradeIp2locationIo(ip2loc.fraudScore);
   if (ip2locGrade.text) grades.push(ip2locGrade);
   grades.push(gradeScamalytics(ok.scamHtml));
@@ -302,7 +288,6 @@ async function fetchIp2locationIo(ip) {
   const meta = severityMeta(maxSev);
 
   const factorParts = [];
-  // IP2Location.io 风险因子（数据中心/服务器/商业宽带等）
   if (ip2loc.usageType && isRiskyUsageType(ip2loc.usageType)) {
     const usageDesc = {
       "DCH": "数据中心", "WEB": "Web托管", "SES": "搜索引擎",
