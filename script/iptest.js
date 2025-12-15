@@ -78,12 +78,12 @@ function ipapiHostingText(j) {
   const asnType = String(j.asn?.type || "").toLowerCase();
   const companyType = String(j.company?.type || "").toLowerCase();
   
-  if (isMobile) return `IP类型（ipapi，可能是）：📱 蜂窝移动网络 (mobile)`;
-  if (asnType === "hosting" || companyType === "hosting") return `IP类型（ipapi，可能是）：🏢 托管服务器 (hosting)`;
-  if (asnType === "isp" || companyType === "isp") return `IP类型（ipapi，可能是）：🏠 家庭宽带 (ISP)`;
-  if (asnType === "business" || companyType === "business") return `IP类型（ipapi，可能是）：🏬 商业宽带 (business)`;
-  if (asnType === "education" || companyType === "education") return `IP类型（ipapi，可能是）：🎓 教育网络 (education)`;
-  if (asnType === "government" || companyType === "government") return `IP类型（ipapi，可能是）：🏛️ 政府网络 (government)`;
+  if (isMobile) return `IP类型（ipapi）：📱 蜂窝移动网络 (mobile)（可能是）`;
+  if (asnType === "hosting" || companyType === "hosting") return `IP类型（ipapi）：🏢 托管服务器 (hosting)（可能是）`;
+  if (asnType === "isp" || companyType === "isp") return `IP类型（ipapi）：🏠 家庭宽带 (ISP)（可能是）`;
+  if (asnType === "business" || companyType === "business") return `IP类型（ipapi）：🏬 商业宽带 (business)（可能是）`;
+  if (asnType === "education" || companyType === "education") return `IP类型（ipapi）：🎓 教育网络 (education)（可能是）`;
+  if (asnType === "government" || companyType === "government") return `IP类型（ipapi）：🏛️ 政府网络 (government)（可能是）`;
   
   const typeInfo = asnType || companyType || "unknown";
   return `IP类型（ipapi）：❓ ${typeInfo}`;
