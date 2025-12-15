@@ -71,10 +71,13 @@ function gradeIpapi(j) {
 
 // IP2Location.io
 function parseIp2locationIo(data) {
-  if (!data) return { usageType: null, fraudScore: null };
+  if (!data) return { usageType: null, fraudScore: null, isProxy: false, proxyType: "-", threat: "-" };
   const usageType = data.as_usage_type || null;
   const fraudScore = data.fraud_score ?? null;
-  return { usageType, fraudScore };
+  const isProxy = data.is_proxy || false;
+  const proxyType = data.proxy_type || "-";
+  const threat = data.threat || "-";
+  return { usageType, fraudScore, isProxy, proxyType, threat };
 }
 
 function gradeIp2locationIo(fraudScore) {
@@ -214,13 +217,33 @@ async function fetchIp2locationIo(ip) {
   const { data } = await httpGet(`https://www.ip2location.io/${encodeURIComponent(ip)}`);
   const html = String(data);
   
+  // Usage Type: (DCH) → "DCH"
   const usageMatch = html.match(/Usage\s*Type<\/label>\s*<p[^>]*>\s*\(([A-Z]+)\)/i);
   const usageType = usageMatch ? usageMatch[1] : null;
   
+  // Fraud Score: 3 → 3
   const fraudMatch = html.match(/Fraud\s*Score<\/label>\s*<p[^>]*>\s*(\d+)/i);
   const fraudScore = fraudMatch ? toInt(fraudMatch[1]) : null;
   
-  return { as_usage_type: usageType, fraud_score: fraudScore };
+  // Proxy: <i class="..."></i> Yes/No → true/false
+  const proxyMatch = html.match(/>Proxy<\/label>\s*<p[^>]*>[^<]*<i[^>]*><\/i>\s*(Yes|No)/i);
+  const isProxy = proxyMatch ? proxyMatch[1].toLowerCase() === "yes" : false;
+  
+  // Proxy Type: VPN, TOR, DCH, PUB, WEB, RES, - 等
+  const proxyTypeMatch = html.match(/Proxy\s*Type<\/label>\s*<p[^>]*>\s*([^<]+)/i);
+  const proxyType = proxyTypeMatch ? proxyTypeMatch[1].trim() : "-";
+  
+  // Threat: SPAM, SCANNER, BOTNET, - 等
+  const threatMatch = html.match(/>Threat<\/label>\s*<p[^>]*>\s*([^<]+)/i);
+  const threat = threatMatch ? threatMatch[1].trim() : "-";
+  
+  return { 
+    as_usage_type: usageType, 
+    fraud_score: fraudScore,
+    is_proxy: isProxy,
+    proxy_type: proxyType,
+    threat: threat
+  };
 }
 
 // ========== 主逻辑 ==========
@@ -288,15 +311,21 @@ async function fetchIp2locationIo(ip) {
   const meta = severityMeta(maxSev);
 
   const factorParts = [];
-  if (ip2loc.usageType && isRiskyUsageType(ip2loc.usageType)) {
-    const usageDesc = {
-      "DCH": "数据中心", "WEB": "Web托管", "SES": "搜索引擎",
-      "COM": "商业宽带", "CDN": "CDN"
-    };
-    const usage = String(ip2loc.usageType).toUpperCase();
-    const desc = usageDesc[usage] || usage;
-    factorParts.push(`IP2Location 因子：${desc} (${ip2loc.usageType})`);
+  // IP2Location.io Proxy 检测
+  const ip2locProxyItems = [];
+  if (ip2loc.isProxy) ip2locProxyItems.push("Proxy");
+  if (ip2loc.proxyType && ip2loc.proxyType !== "-") {
+    const typeMap = { "VPN": "VPN", "TOR": "Tor", "DCH": "数据中心代理", "PUB": "公共代理", "WEB": "Web代理", "RES": "住宅代理" };
+    const typeDesc = typeMap[ip2loc.proxyType.toUpperCase()] || ip2loc.proxyType;
+    ip2locProxyItems.push(typeDesc);
   }
+  if (ip2loc.threat && ip2loc.threat !== "-") {
+    ip2locProxyItems.push(`威胁:${ip2loc.threat}`);
+  }
+  if (ip2locProxyItems.length) {
+    factorParts.push(`IP2Location 因子：${ip2locProxyItems.join("/")}`);
+  }
+  // ipapi 因子
   if (ok.ipapi) {
     const items = [];
     if (ok.ipapi.is_proxy === true) items.push("Proxy");
@@ -307,6 +336,7 @@ async function fetchIp2locationIo(ip) {
     if (ok.ipapi.is_crawler === true) items.push("Crawler");
     if (items.length) factorParts.push(`ipapi 因子：${items.join("/")}`);
   }
+  // IPWhois 因子
   if (ok.ipwhois && ok.ipwhois.security) {
     const sec = ok.ipwhois.security;
     const items = [];
@@ -315,6 +345,15 @@ async function fetchIp2locationIo(ip) {
     if (sec.vpn === true) items.push("VPN");
     if (sec.hosting === true) items.push("Hosting");
     if (items.length) factorParts.push(`IPWhois 因子：${items.join("/")}`);
+  }
+  if (ip2locProxyItems.length === 0 && ip2loc.usageType && isRiskyUsageType(ip2loc.usageType)) {
+    const usageDesc = {
+      "DCH": "数据中心", "WEB": "Web托管", "SES": "搜索引擎",
+      "COM": "商业宽带", "CDN": "CDN"
+    };
+    const usage = String(ip2loc.usageType).toUpperCase();
+    const desc = usageDesc[usage] || usage;
+    factorParts.push(`IP2Location 因子：${desc} (${ip2loc.usageType})`);
   }
   const factorText = factorParts.length ? `\n\n——风险因子——\n${factorParts.join("\n")}` : "";
 
