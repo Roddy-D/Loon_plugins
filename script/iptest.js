@@ -69,24 +69,58 @@ function gradeIpapi(j) {
   return { sev, text: `ipapi：${label} (${pct}, ${level})` };
 }
 
-// ipapi.is 判断 IP 类型
-function ipapiHostingText(j) {
-  if (!j) return "IP类型（ipapi）：未知（获取失败）";
+// IP2Location.io - 从网页抓取数据解析
+function parseIp2locationIo(data) {
+  if (!data) return { usageType: null, fraudScore: null };
+  const usageType = data.as_usage_type || null;
+  const fraudScore = data.fraud_score ?? null;
+  return { usageType, fraudScore };
+}
+
+// IP2Location.io 评分
+function gradeIp2locationIo(fraudScore) {
+  const s = toInt(fraudScore);
+  if (s === null) return { sev: -1, text: null };
+  if (s >= 66) return { sev: 3, text: `IP2Location.io：⚠️ 高风险 (${s})` };
+  if (s >= 33) return { sev: 1, text: `IP2Location.io：🔶 中风险 (${s})` };
+  return { sev: 0, text: `IP2Location.io：✅ 低风险 (${s})` };
+}
+
+// IP2Location.io 机房判断（使用 as_usage_type 字段）
+function ip2locationHostingText(usageType) {
+  if (!usageType) return "IP类型：未知（获取失败）";
   
-  const isDc = j.is_datacenter === true;
-  const isMobile = j.is_mobile === true;
-  const asnType = String(j.asn?.type || "").toLowerCase();
-  const companyType = String(j.company?.type || "").toLowerCase();
+  const usage = String(usageType).toUpperCase();
   
-  if (isMobile) return `IP类型（ipapi）：📱 蜂窝移动网络 (mobile)（可能是）`;
-  if (asnType === "hosting" || companyType === "hosting") return `IP类型（ipapi）：🏢 托管服务器 (hosting)（可能是）`;
-  if (asnType === "isp" || companyType === "isp") return `IP类型（ipapi）：🏠 家庭宽带 (ISP)（可能是）`;
-  if (asnType === "business" || companyType === "business") return `IP类型（ipapi）：🏬 商业宽带 (business)（可能是）`;
-  if (asnType === "education" || companyType === "education") return `IP类型（ipapi）：🎓 教育网络 (education)（可能是）`;
-  if (asnType === "government" || companyType === "government") return `IP类型（ipapi）：🏛️ 政府网络 (government)（可能是）`;
+  if (usage.startsWith("DCH") || usage === "WEB" || usage === "SES") {
+    return `IP类型：🏢 数据中心/服务器 (${usageType})`;
+  }
+  if (usage.startsWith("CDN")) {
+    return `IP类型：🌐 CDN (${usageType})`;
+  }
+  if (usage.startsWith("MOB")) {
+    return `IP类型：📱 蜂窝移动网络 (${usageType})`;
+  }
+  if (usage.startsWith("ISP")) {
+    return `IP类型：🏠 家庭宽带 (${usageType})`;
+  }
+  if (usage.startsWith("COM")) {
+    return `IP类型：🏬 商业宽带 (${usageType})`;
+  }
+  if (usage.startsWith("EDU")) {
+    return `IP类型：🎓 教育网络 (${usageType})`;
+  }
+  if (usage.startsWith("GOV")) {
+    return `IP类型：🏛️ 政府网络 (${usageType})`;
+  }
+  if (usage.startsWith("MIL")) {
+    return `IP类型：🎖️ 军用网络 (${usageType})`;
+  }
+  if (usage.startsWith("ORG")) {
+    return `IP类型：🏢 组织机构 (${usageType})`;
+  }
   
-  const typeInfo = asnType || companyType || "unknown";
-  return `IP类型（ipapi）：❓ ${typeInfo}`;
+  return `IP类型：❓ ${usageType}`;
 }
 
 // DB-IP - 抓网页解析
@@ -175,6 +209,22 @@ async function fetchIpwhois(ip) {
   return safeJsonParse(data);
 }
 
+async function fetchIp2locationIo(ip) {
+  // 直接访问 ip2location.io 网页，抓取页面中的数据
+  const { data } = await httpGet(`https://www.ip2location.io/${encodeURIComponent(ip)}`);
+  const html = String(data);
+  
+  // 从 HTML 中提取 Usage Type: (DCH) → "DCH"
+  const usageMatch = html.match(/Usage\s*Type<\/label>\s*<p[^>]*>\s*\(([A-Z]+)\)/i);
+  const usageType = usageMatch ? usageMatch[1] : null;
+  
+  // 从 HTML 中提取 Fraud Score: 3 → 3
+  const fraudMatch = html.match(/Fraud\s*Score<\/label>\s*<p[^>]*>\s*(\d+)/i);
+  const fraudScore = fraudMatch ? toInt(fraudMatch[1]) : null;
+  
+  return { as_usage_type: usageType, fraud_score: fraudScore };
+}
+
 // ========== 主逻辑 ==========
 
 (async () => {
@@ -200,6 +250,7 @@ async function fetchIpwhois(ip) {
 
   const tasks = {
     ipapi: fetchIpapi(ip),
+    ip2locIo: fetchIp2locationIo(ip),
     dbipHtml: fetchDbipHtml(ip),
     scamHtml: fetchScamalyticsHtml(ip),
     ipwhois: fetchIpwhois(ip),
@@ -224,11 +275,16 @@ async function fetchIpwhois(ip) {
   const city = ipapiData.location?.city || "";
   const flag = flagEmoji(countryCode);
 
-  const hostingLine = ipapiHostingText(ok.ipapi);
+  // 解析 IP2Location.io 数据（IP 类型 + 评分）
+  const ip2loc = parseIp2locationIo(ok.ip2locIo);
+  const hostingLine = ip2locationHostingText(ip2loc.usageType);
 
   const grades = [];
   grades.push(gradeIppure(ippureFraudScore));
   grades.push(gradeIpapi(ok.ipapi));
+  // IP2Location.io 评分（如果有）
+  const ip2locGrade = gradeIp2locationIo(ip2loc.fraudScore);
+  if (ip2locGrade.text) grades.push(ip2locGrade);
   grades.push(gradeScamalytics(ok.scamHtml));
   grades.push(gradeDbip(ok.dbipHtml));
   grades.push(gradeIpwhois(ok.ipwhois));
