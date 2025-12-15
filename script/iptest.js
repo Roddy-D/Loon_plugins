@@ -88,39 +88,48 @@ function gradeIp2locationIo(fraudScore) {
 
 // IP2Location.io 机房判断（使用 as_usage_type 字段）
 function ip2locationHostingText(usageType) {
-  if (!usageType) return "IP类型：未知（获取失败）";
+  const source = "（来源:IP2Location）";
+  if (!usageType) return `IP类型：未知（获取失败）${source}`;
   
   const usage = String(usageType).toUpperCase();
   
   if (usage.startsWith("DCH") || usage === "WEB" || usage === "SES") {
-    return `IP类型：🏢 数据中心/服务器 (${usageType})`;
+    return `IP类型：🏢 数据中心/服务器 (${usageType}) ${source}`;
   }
   if (usage.startsWith("CDN")) {
-    return `IP类型：🌐 CDN (${usageType})`;
+    return `IP类型：🌐 CDN (${usageType}) ${source}`;
   }
   if (usage.startsWith("MOB")) {
-    return `IP类型：📱 蜂窝移动网络 (${usageType})`;
+    return `IP类型：📱 蜂窝移动网络 (${usageType}) ${source}`;
   }
   if (usage.startsWith("ISP")) {
-    return `IP类型：🏠 家庭宽带 (${usageType})`;
+    return `IP类型：🏠 家庭宽带 (${usageType}) ${source}`;
   }
   if (usage.startsWith("COM")) {
-    return `IP类型：🏬 商业宽带 (${usageType})`;
+    return `IP类型：🏬 商业宽带 (${usageType}) ${source}`;
   }
   if (usage.startsWith("EDU")) {
-    return `IP类型：🎓 教育网络 (${usageType})`;
+    return `IP类型：🎓 教育网络 (${usageType}) ${source}`;
   }
   if (usage.startsWith("GOV")) {
-    return `IP类型：🏛️ 政府网络 (${usageType})`;
+    return `IP类型：🏛️ 政府网络 (${usageType}) ${source}`;
   }
   if (usage.startsWith("MIL")) {
-    return `IP类型：🎖️ 军用网络 (${usageType})`;
+    return `IP类型：🎖️ 军用网络 (${usageType}) ${source}`;
   }
   if (usage.startsWith("ORG")) {
-    return `IP类型：🏢 组织机构 (${usageType})`;
+    return `IP类型：🏢 组织机构 (${usageType}) ${source}`;
   }
   
-  return `IP类型：❓ ${usageType}`;
+  return `IP类型：❓ ${usageType} ${source}`;
+}
+
+// 判断 IP 类型是否为风险类型（数据中心/服务器/商业宽带）
+function isRiskyUsageType(usageType) {
+  if (!usageType) return false;
+  const usage = String(usageType).toUpperCase();
+  // DCH=数据中心, WEB=Web托管, SES=搜索引擎, COM=商业宽带, CDN
+  return usage.startsWith("DCH") || usage === "WEB" || usage === "SES" || usage.startsWith("COM") || usage.startsWith("CDN");
 }
 
 // DB-IP - 抓网页解析
@@ -293,6 +302,16 @@ async function fetchIp2locationIo(ip) {
   const meta = severityMeta(maxSev);
 
   const factorParts = [];
+  // IP2Location.io 风险因子（数据中心/服务器/商业宽带等）
+  if (ip2loc.usageType && isRiskyUsageType(ip2loc.usageType)) {
+    const usageDesc = {
+      "DCH": "数据中心", "WEB": "Web托管", "SES": "搜索引擎",
+      "COM": "商业宽带", "CDN": "CDN"
+    };
+    const usage = String(ip2loc.usageType).toUpperCase();
+    const desc = usageDesc[usage] || usage;
+    factorParts.push(`IP2Location 因子：${desc} (${ip2loc.usageType})`);
+  }
   if (ok.ipapi) {
     const items = [];
     if (ok.ipapi.is_proxy === true) items.push("Proxy");
