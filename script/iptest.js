@@ -224,24 +224,19 @@ async function fetchIp2locationIo(ip) {
   // 2. ISP/MOB → "ISP/MOB"
   let usageMatch = html.match(/Usage\s*Type<\/label>\s*<p[^>]*>\s*\(([A-Z]+)\)/i);
   if (!usageMatch) {
-    // 没有括号的格式，直接提取如 ISP、ISP/MOB、MOB 等
     usageMatch = html.match(/Usage\s*Type<\/label>\s*<p[^>]*>\s*([A-Z]+(?:\/[A-Z]+)?)\s*</i);
   }
   const usageType = usageMatch ? usageMatch[1] : null;
   
-  // Fraud Score: 3 → 3
   const fraudMatch = html.match(/Fraud\s*Score<\/label>\s*<p[^>]*>\s*(\d+)/i);
   const fraudScore = fraudMatch ? toInt(fraudMatch[1]) : null;
   
-  // Proxy: <i class="..."></i> Yes/No → true/false
   const proxyMatch = html.match(/>Proxy<\/label>\s*<p[^>]*>[^<]*<i[^>]*><\/i>\s*(Yes|No)/i);
   const isProxy = proxyMatch ? proxyMatch[1].toLowerCase() === "yes" : false;
   
-  // Proxy Type: VPN, TOR, DCH, PUB, WEB, RES, - 等
   const proxyTypeMatch = html.match(/Proxy\s*Type<\/label>\s*<p[^>]*>\s*([^<]+)/i);
   const proxyType = proxyTypeMatch ? proxyTypeMatch[1].trim() : "-";
   
-  // Threat: SPAM, SCANNER, BOTNET, - 等
   const threatMatch = html.match(/>Threat<\/label>\s*<p[^>]*>\s*([^<]+)/i);
   const threat = threatMatch ? threatMatch[1].trim() : "-";
   
