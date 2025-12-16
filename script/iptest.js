@@ -92,44 +92,46 @@ function ip2locationHostingText(usageType) {
   const source = "（来源:IP2Location）";
   if (!usageType) return `IP类型：未知（获取失败）${source}`;
   
-  const usage = String(usageType).toUpperCase();
+  // 类型映射表
+  const typeMap = {
+    "DCH": "🏢 数据中心/服务器",
+    "WEB": "🏢 数据中心/服务器",
+    "SES": "🏢 数据中心/服务器",
+    "CDN": "🌐 CDN",
+    "MOB": "📱 蜂窝移动网络",
+    "ISP": "🏠 家庭宽带",
+    "COM": "🏬 商业宽带",
+    "EDU": "🎓 教育网络",
+    "GOV": "🏛️ 政府网络",
+    "MIL": "🎖️ 军用网络",
+    "ORG": "🏢 组织机构",
+    "RES": "🏠 住宅网络",
+  };
   
-  if (usage.startsWith("DCH") || usage === "WEB" || usage === "SES") {
-    return `IP类型：🏢 数据中心/服务器 (${usageType}) ${source}`;
-  }
-  if (usage.startsWith("CDN")) {
-    return `IP类型：🌐 CDN (${usageType}) ${source}`;
-  }
-  if (usage.startsWith("MOB")) {
-    return `IP类型：📱 蜂窝移动网络 (${usageType}) ${source}`;
-  }
-  if (usage.startsWith("ISP")) {
-    return `IP类型：🏠 家庭宽带 (${usageType}) ${source}`;
-  }
-  if (usage.startsWith("COM")) {
-    return `IP类型：🏬 商业宽带 (${usageType}) ${source}`;
-  }
-  if (usage.startsWith("EDU")) {
-    return `IP类型：🎓 教育网络 (${usageType}) ${source}`;
-  }
-  if (usage.startsWith("GOV")) {
-    return `IP类型：🏛️ 政府网络 (${usageType}) ${source}`;
-  }
-  if (usage.startsWith("MIL")) {
-    return `IP类型：🎖️ 军用网络 (${usageType}) ${source}`;
-  }
-  if (usage.startsWith("ORG")) {
-    return `IP类型：🏢 组织机构 (${usageType}) ${source}`;
+  // 按 / 分割，支持 ISP/MOB 等复合类型
+  const parts = String(usageType).toUpperCase().split("/");
+  const descriptions = [];
+  
+  for (const part of parts) {
+    const desc = typeMap[part];
+    if (desc && !descriptions.includes(desc)) {
+      descriptions.push(desc);
+    }
   }
   
-  return `IP类型：❓ ${usageType} ${source}`;
+  if (descriptions.length === 0) {
+    return `IP类型：❓ ${usageType} ${source}`;
+  }
+  
+  return `IP类型：${descriptions.join(" / ")} (${usageType}) ${source}`;
 }
 
-// 判断 IP 类型
+// 判断 IP 类型是否有风险（数据中心/商业等）
 function isRiskyUsageType(usageType) {
   if (!usageType) return false;
-  const usage = String(usageType).toUpperCase();
-  return usage.startsWith("DCH") || usage === "WEB" || usage === "SES" || usage.startsWith("COM") || usage.startsWith("CDN");
+  const riskyTypes = ["DCH", "WEB", "SES", "COM", "CDN"];
+  const parts = String(usageType).toUpperCase().split("/");
+  return parts.some(part => riskyTypes.includes(part));
 }
 
 // DB-IP
@@ -217,8 +219,14 @@ async function fetchIp2locationIo(ip) {
   const { data } = await httpGet(`https://www.ip2location.io/${encodeURIComponent(ip)}`);
   const html = String(data);
   
-  // Usage Type: (DCH) → "DCH"
-  const usageMatch = html.match(/Usage\s*Type<\/label>\s*<p[^>]*>\s*\(([A-Z]+)\)/i);
+  // Usage Type: 支持两种格式
+  // 1. (DCH) Data Center/Web Hosting/Transit → "DCH"
+  // 2. ISP/MOB → "ISP/MOB"
+  let usageMatch = html.match(/Usage\s*Type<\/label>\s*<p[^>]*>\s*\(([A-Z]+)\)/i);
+  if (!usageMatch) {
+    // 没有括号的格式，直接提取如 ISP、ISP/MOB、MOB 等
+    usageMatch = html.match(/Usage\s*Type<\/label>\s*<p[^>]*>\s*([A-Z]+(?:\/[A-Z]+)?)\s*</i);
+  }
   const usageType = usageMatch ? usageMatch[1] : null;
   
   // Fraud Score: 3 → 3
