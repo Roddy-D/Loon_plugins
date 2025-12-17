@@ -219,9 +219,7 @@ async function fetchIp2locationIo(ip) {
   const { data } = await httpGet(`https://www.ip2location.io/${encodeURIComponent(ip)}`);
   const html = String(data);
   
-  // Usage Type: 支持两种格式
-  // 1. (DCH) Data Center/Web Hosting/Transit → "DCH"
-  // 2. ISP/MOB → "ISP/MOB"
+  // Usage Type
   let usageMatch = html.match(/Usage\s*Type<\/label>\s*<p[^>]*>\s*\(([A-Z]+)\)/i);
   if (!usageMatch) {
     usageMatch = html.match(/Usage\s*Type<\/label>\s*<p[^>]*>\s*([A-Z]+(?:\/[A-Z]+)?)\s*</i);
@@ -249,6 +247,30 @@ async function fetchIp2locationIo(ip) {
   };
 }
 
+
+async function fetchIpinfoIo(ip) {
+  const { data } = await httpGet(`https://ipinfo.io/${encodeURIComponent(ip)}`, {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Accept": "text/html"
+  });
+  const html = String(data);
+  
+
+  const detected = [];
+  const privacyTypes = ["VPN", "Proxy", "Tor", "Relay", "Hosting", "Residential Proxy"];
+  for (const type of privacyTypes) {
+    const regex = new RegExp(`aria-label="${type}\\s+Detected"`, "i");
+    if (regex.test(html)) {
+      detected.push(type);
+    }
+  }
+  
+  const asnTypeMatch = html.match(/>ASN type<\/span>\s*<\/td>\s*<td>([^<]+)</i);
+  const asnType = asnTypeMatch ? asnTypeMatch[1].trim() : null;
+  
+  return { detected, asnType };
+}
+
 // ========== 主逻辑 ==========
 
 (async () => {
@@ -274,6 +296,7 @@ async function fetchIp2locationIo(ip) {
   const tasks = {
     ipapi: fetchIpapi(ip),
     ip2locIo: fetchIp2locationIo(ip),
+    ipinfoIo: fetchIpinfoIo(ip),
     dbipHtml: fetchDbipHtml(ip),
     scamHtml: fetchScamalyticsHtml(ip),
     ipwhois: fetchIpwhois(ip),
@@ -349,6 +372,10 @@ async function fetchIp2locationIo(ip) {
     if (sec.hosting === true) items.push("Hosting");
     if (items.length) factorParts.push(`IPWhois 因子：${items.join("/")}`);
   }
+  // ipinfo.io 因子
+  if (ok.ipinfoIo && ok.ipinfoIo.detected && ok.ipinfoIo.detected.length) {
+    factorParts.push(`ipinfo.io 因子：${ok.ipinfoIo.detected.join("/")}`);
+  }
   if (ip2locProxyItems.length === 0 && ip2loc.usageType && isRiskyUsageType(ip2loc.usageType)) {
     const usageDesc = {
       "DCH": "数据中心", "WEB": "Web托管", "SES": "搜索引擎",
@@ -358,28 +385,48 @@ async function fetchIp2locationIo(ip) {
     const desc = usageDesc[usage] || usage;
     factorParts.push(`IP2Location 因子：${desc} (${ip2loc.usageType})`);
   }
-  const factorText = factorParts.length ? `\n\n——风险因子——\n${factorParts.join("\n")}` : "";
+  const riskLines = grades.map((g) => g.text).filter(Boolean);
 
-  const riskLines = grades.map((g) => g.text).join("\n");
+  // 构建 HTML 输出
+  let html = `<p style="text-align: center; font-family: -apple-system; font-size: large; font-weight: thin">`;
+  html += `<b><font color=#6959CD>IP</font> : </b><font color=>${ip}</font></br>`;
+  html += `<b><font color=#6959CD>ASN</font> : </b><font color=>${asnText}</font></br>`;
+  html += `<b><font color=#6959CD>位置</font> : </b><font color=>${flag} ${country} ${city}</font></br>`;
+  html += `<b><font color=#6959CD>类型</font> : </b><font color=>${hostingLine.replace("IP类型：", "")}</font></br>`;
+  
+  // 多源评分
+  html += `</br><b><font color=#FF6347>—— 多源评分 ——</font></b></br>`;
+  for (const line of riskLines) {
+    const [name, ...rest] = line.split("：");
+    const result = rest.join("：");
+    html += `${name}：<b>${result}</b></br>`;
+  }
+  
+  // IP类型风险
+  if (factorParts.length) {
+    html += `</br><b><font color=#FF6347>—— IP类型风险 ——</font></b></br>`;
+    for (const factor of factorParts) {
+      const [fname, ...frest] = factor.split("：");
+      const fresult = frest.join("：");
+      html += `${fname}：<b>${fresult}</b></br>`;
+    }
+  }
+  
+  html += `</br><font color=#6959CD><b>节点</b> ➟ ${nodeName || "-"}</font>`;
+  html += `</p>`;
 
   $done({
     title: "节点 IP 风险汇总",
-    content:
-`IP：${ip}
-ASN：${asnText}
-位置：${flag} ${country} ${city}
-${hostingLine}
-节点：${nodeName || "-"}
-
-——多源评分——
-${riskLines}${factorText}`,
+    htmlMessage: html,
     icon: meta.icon,
     "title-color": meta.color,
   });
 })().catch((e) => {
+  const errHtml = `<p style="text-align: center; font-family: -apple-system; font-size: large; font-weight: bold;">` +
+    `</br></br>🔴 请求失败：${String(e && e.message ? e.message : e)}</p>`;
   $done({
     title: "IP 纯净度",
-    content: `请求失败：${String(e && e.message ? e.message : e)}`,
+    htmlMessage: errHtml,
     icon: "network.slash",
   });
 });
