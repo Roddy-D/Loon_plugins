@@ -349,9 +349,9 @@ async function fetchIpinfoIo(ip) {
     ip2locProxyItems.push(`威胁:${ip2loc.threat}`);
   }
   if (ip2locProxyItems.length) {
-    factorParts.push(`IP2Location 因子：${ip2locProxyItems.join("/")}`);
+    factorParts.push(`IP2Location 检测类型：${ip2locProxyItems.join("/")}`);
   }
-  // ipapi 因子
+  // ipapi 检测类型
   if (ok.ipapi) {
     const items = [];
     if (ok.ipapi.is_proxy === true) items.push("Proxy");
@@ -360,9 +360,9 @@ async function fetchIpinfoIo(ip) {
     if (ok.ipapi.is_datacenter === true) items.push("Datacenter");
     if (ok.ipapi.is_abuser === true) items.push("Abuser");
     if (ok.ipapi.is_crawler === true) items.push("Crawler");
-    if (items.length) factorParts.push(`ipapi 因子：${items.join("/")}`);
+    if (items.length) factorParts.push(`ipapi 检测类型：${items.join("/")}`);
   }
-  // IPWhois 因子
+  // IPWhois 检测类型
   if (ok.ipwhois && ok.ipwhois.security) {
     const sec = ok.ipwhois.security;
     const items = [];
@@ -370,11 +370,11 @@ async function fetchIpinfoIo(ip) {
     if (sec.tor === true) items.push("Tor");
     if (sec.vpn === true) items.push("VPN");
     if (sec.hosting === true) items.push("Hosting");
-    if (items.length) factorParts.push(`IPWhois 因子：${items.join("/")}`);
+    if (items.length) factorParts.push(`IPWhois 检测类型：${items.join("/")}`);
   }
-  // ipinfo.io 因子
+  // ipinfo.io 检测类型
   if (ok.ipinfoIo && ok.ipinfoIo.detected && ok.ipinfoIo.detected.length) {
-    factorParts.push(`ipinfo.io 因子：${ok.ipinfoIo.detected.join("/")}`);
+    factorParts.push(`ipinfo.io 检测类型：${ok.ipinfoIo.detected.join("/")}`);
   }
   if (ip2locProxyItems.length === 0 && ip2loc.usageType && isRiskyUsageType(ip2loc.usageType)) {
     const usageDesc = {
@@ -383,7 +383,7 @@ async function fetchIpinfoIo(ip) {
     };
     const usage = String(ip2loc.usageType).toUpperCase();
     const desc = usageDesc[usage] || usage;
-    factorParts.push(`IP2Location 因子：${desc} (${ip2loc.usageType})`);
+    factorParts.push(`IP2Location 检测类型：${desc} (${ip2loc.usageType})`);
   }
   const riskLines = grades.map((g) => g.text).filter(Boolean);
 
