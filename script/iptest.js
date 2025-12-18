@@ -399,7 +399,7 @@ async function fetchIpinfoIo(ip) {
   for (const line of riskLines) {
     const [name, ...rest] = line.split("：");
     const result = rest.join("：");
-    html += `${name}：<b>${result}</b></br>`;
+    html += `<b>${name}</b>：${result}</br>`;
   }
   
   // IP类型风险
@@ -408,7 +408,7 @@ async function fetchIpinfoIo(ip) {
     for (const factor of factorParts) {
       const [fname, ...frest] = factor.split("：");
       const fresult = frest.join("：");
-      html += `${fname}：<b>${fresult}</b></br>`;
+      html += `<b>${fname}</b>：${fresult}</br>`;
     }
   }
   
