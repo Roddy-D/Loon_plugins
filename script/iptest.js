@@ -50,7 +50,7 @@ function gradeIppure(score) {
 // ipapi.is
 function gradeIpapi(j) {
   if (!j || !j.company) return { sev: 2, text: "ipapi：获取失败" };
-  
+
   const abuserScoreText = j.company.abuser_score;
   if (!abuserScoreText || typeof abuserScoreText !== "string") {
     return { sev: 2, text: "ipapi：无评分" };
@@ -91,7 +91,7 @@ function gradeIp2locationIo(fraudScore) {
 function ip2locationHostingText(usageType) {
   const source = "（来源:IP2Location）";
   if (!usageType) return `IP类型：未知（获取失败）${source}`;
-  
+
   // 类型映射表
   const typeMap = {
     "DCH": "🏢 数据中心/服务器",
@@ -107,22 +107,22 @@ function ip2locationHostingText(usageType) {
     "ORG": "🏢 组织机构",
     "RES": "🏠 住宅网络",
   };
-  
+
   // 按 / 分割，支持 ISP/MOB 等复合类型
   const parts = String(usageType).toUpperCase().split("/");
   const descriptions = [];
-  
+
   for (const part of parts) {
     const desc = typeMap[part];
     if (desc && !descriptions.includes(desc)) {
       descriptions.push(desc);
     }
   }
-  
+
   if (descriptions.length === 0) {
     return `IP类型：❓ ${usageType} ${source}`;
   }
-  
+
   return `IP类型：${descriptions.join(" / ")} (${usageType}) ${source}`;
 }
 
@@ -150,11 +150,11 @@ function gradeDbip(html) {
 // Scamalytics
 function gradeScamalytics(html) {
   if (!html) return { sev: 2, text: "Scamalytics：获取失败" };
-  const scoreMatch = html.match(/Fraud\s*Score[:\s]*(\d+)/i) 
+  const scoreMatch = html.match(/Fraud\s*Score[:\s]*(\d+)/i)
     || html.match(/class="score"[^>]*>(\d+)/i)
     || html.match(/"score"\s*:\s*(\d+)/i);
   if (!scoreMatch) return { sev: 2, text: "Scamalytics：获取失败" };
-  
+
   const s = toInt(scoreMatch[1]);
   if (s === null) return { sev: 2, text: "Scamalytics：获取失败" };
   if (s >= 90) return { sev: 4, text: `Scamalytics：🛑 极高风险 (${s})` };
@@ -163,23 +163,24 @@ function gradeScamalytics(html) {
   return { sev: 0, text: `Scamalytics：✅ 低风险 (${s})` };
 }
 
-// IPWhois
-function gradeIpwhois(j) {
-  if (!j || !j.security) return { sev: 2, text: "IPWhois：获取失败" };
-  
-  const sec = j.security;
+// ipregistry
+function gradeIpregistry(j) {
+  if (!j || j.code) return { sev: 2, text: "ipregistry：获取失败" };
+
+  const sec = j.security || {};
   const items = [];
-  if (sec.proxy === true) items.push("Proxy");
-  if (sec.tor === true) items.push("Tor");
-  if (sec.vpn === true) items.push("VPN");
-  if (sec.hosting === true) items.push("Hosting");
-  
+  if (sec.is_proxy === true) items.push("Proxy");
+  if (sec.is_tor === true || sec.is_tor_exit === true) items.push("Tor");
+  if (sec.is_vpn === true) items.push("VPN");
+  if (sec.is_cloud_provider === true) items.push("Hosting");
+  if (sec.is_abuser === true) items.push("Abuser");
+
   if (items.length === 0) {
-    return { sev: 0, text: "IPWhois：✅ 低风险（无标记）" };
+    return { sev: 0, text: "ipregistry：✅ 低风险（无标记）" };
   }
-  const sev = items.includes("Tor") ? 3 : items.length >= 2 ? 2 : 1;
+  const sev = items.includes("Tor") ? 3 : items.includes("Abuser") ? 3 : items.length >= 2 ? 2 : 1;
   const label = sev >= 3 ? "⚠️ 高风险" : sev >= 2 ? "🔶 较高风险" : "🔶 有标记";
-  return { sev, text: `IPWhois：${label} (${items.join("/")})` };
+  return { sev, text: `ipregistry：${label} (${items.join("/")})` };
 }
 
 function flagEmoji(code) {
@@ -207,39 +208,56 @@ async function fetchScamalyticsHtml(ip) {
   return String(data);
 }
 
-async function fetchIpwhois(ip) {
-  const { data } = await httpGet(`https://ipwhois.io/widget?ip=${encodeURIComponent(ip)}&lang=en`, {
-    "Referer": "https://ipwhois.io/",
-    "Accept": "*/*",
-  });
+async function fetchIpregistry(ip) {
+  // 1. 先获取首页抓取 API Key
+  let apiKey = null;
+  try {
+    const { data: html } = await httpGet("https://ipregistry.co", {
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    });
+    const keyMatch = String(html).match(/apiKey="([a-zA-Z0-9]+)"/);
+    if (keyMatch) apiKey = keyMatch[1];
+  } catch (_) { }
+
+  if (!apiKey) throw new Error("无法获取 API Key");
+
+  // 2. 使用 key 调用 API
+  const { data } = await httpGet(
+    `https://api.ipregistry.co/${encodeURIComponent(ip)}?hostname=true&key=${apiKey}`,
+    {
+      "Origin": "https://ipregistry.co",
+      "Referer": "https://ipregistry.co/",
+      "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    }
+  );
   return safeJsonParse(data);
 }
 
 async function fetchIp2locationIo(ip) {
   const { data } = await httpGet(`https://www.ip2location.io/${encodeURIComponent(ip)}`);
   const html = String(data);
-  
+
   // Usage Type
   let usageMatch = html.match(/Usage\s*Type<\/label>\s*<p[^>]*>\s*\(([A-Z]+)\)/i);
   if (!usageMatch) {
     usageMatch = html.match(/Usage\s*Type<\/label>\s*<p[^>]*>\s*([A-Z]+(?:\/[A-Z]+)?)\s*</i);
   }
   const usageType = usageMatch ? usageMatch[1] : null;
-  
+
   const fraudMatch = html.match(/Fraud\s*Score<\/label>\s*<p[^>]*>\s*(\d+)/i);
   const fraudScore = fraudMatch ? toInt(fraudMatch[1]) : null;
-  
+
   const proxyMatch = html.match(/>Proxy<\/label>\s*<p[^>]*>[^<]*<i[^>]*><\/i>\s*(Yes|No)/i);
   const isProxy = proxyMatch ? proxyMatch[1].toLowerCase() === "yes" : false;
-  
+
   const proxyTypeMatch = html.match(/Proxy\s*Type<\/label>\s*<p[^>]*>\s*([^<]+)/i);
   const proxyType = proxyTypeMatch ? proxyTypeMatch[1].trim() : "-";
-  
+
   const threatMatch = html.match(/>Threat<\/label>\s*<p[^>]*>\s*([^<]+)/i);
   const threat = threatMatch ? threatMatch[1].trim() : "-";
-  
-  return { 
-    as_usage_type: usageType, 
+
+  return {
+    as_usage_type: usageType,
     fraud_score: fraudScore,
     is_proxy: isProxy,
     proxy_type: proxyType,
@@ -254,7 +272,7 @@ async function fetchIpinfoIo(ip) {
     "Accept": "text/html"
   });
   const html = String(data);
-  
+
 
   const detected = [];
   const privacyTypes = ["VPN", "Proxy", "Tor", "Relay", "Hosting", "Residential Proxy"];
@@ -264,10 +282,10 @@ async function fetchIpinfoIo(ip) {
       detected.push(type);
     }
   }
-  
+
   const asnTypeMatch = html.match(/>ASN type<\/span>\s*<\/td>\s*<td>([^<]+)</i);
   const asnType = asnTypeMatch ? asnTypeMatch[1].trim() : null;
-  
+
   return { detected, asnType };
 }
 
@@ -279,7 +297,7 @@ async function fetchIpinfoIo(ip) {
     const { data: ipv4Data } = await httpGet(IPV4_API);
     const ipv4Json = safeJsonParse(ipv4Data);
     ip = ipv4Json?.query || ipv4Json?.ip || String(ipv4Data || "").trim();
-  } catch (_) {}
+  } catch (_) { }
 
   if (!ip) {
     $done({ title: "IP 纯净度", content: "获取 IPv4 失败", icon: "exclamationmark.triangle.fill" });
@@ -291,7 +309,7 @@ async function fetchIpinfoIo(ip) {
     const { data } = await httpGet(IPPURE_URL);
     const base = safeJsonParse(data);
     if (base) ippureFraudScore = base.fraudScore;
-  } catch (_) {}
+  } catch (_) { }
 
   const tasks = {
     ipapi: fetchIpapi(ip),
@@ -299,7 +317,7 @@ async function fetchIpinfoIo(ip) {
     ipinfoIo: fetchIpinfoIo(ip),
     dbipHtml: fetchDbipHtml(ip),
     scamHtml: fetchScamalyticsHtml(ip),
-    ipwhois: fetchIpwhois(ip),
+    ipregistry: fetchIpregistry(ip),
   };
 
   const results = await Promise.allSettled(
@@ -331,7 +349,7 @@ async function fetchIpinfoIo(ip) {
   if (ip2locGrade.text) grades.push(ip2locGrade);
   grades.push(gradeScamalytics(ok.scamHtml));
   grades.push(gradeDbip(ok.dbipHtml));
-  grades.push(gradeIpwhois(ok.ipwhois));
+  grades.push(gradeIpregistry(ok.ipregistry));
 
   const maxSev = grades.reduce((m, g) => Math.max(m, g.sev ?? 2), 0);
   const meta = severityMeta(maxSev);
@@ -362,19 +380,21 @@ async function fetchIpinfoIo(ip) {
     if (ok.ipapi.is_crawler === true) items.push("Crawler");
     if (items.length) factorParts.push(`ipapi 检测类型：${items.join("/")}`);
   }
-  // IPWhois 检测类型
-  if (ok.ipwhois && ok.ipwhois.security) {
-    const sec = ok.ipwhois.security;
-    const items = [];
-    if (sec.proxy === true) items.push("Proxy");
-    if (sec.tor === true) items.push("Tor");
-    if (sec.vpn === true) items.push("VPN");
-    if (sec.hosting === true) items.push("Hosting");
-    if (items.length) factorParts.push(`IPWhois 检测类型：${items.join("/")}`);
-  }
+
   // ipinfo.io 检测类型
   if (ok.ipinfoIo && ok.ipinfoIo.detected && ok.ipinfoIo.detected.length) {
     factorParts.push(`ipinfo.io 检测类型：${ok.ipinfoIo.detected.join("/")}`);
+  }
+  // ipregistry 检测类型
+  if (ok.ipregistry && ok.ipregistry.security) {
+    const sec = ok.ipregistry.security;
+    const items = [];
+    if (sec.is_proxy === true) items.push("Proxy");
+    if (sec.is_tor === true || sec.is_tor_exit === true) items.push("Tor");
+    if (sec.is_vpn === true) items.push("VPN");
+    if (sec.is_cloud_provider === true) items.push("Hosting");
+    if (sec.is_abuser === true) items.push("Abuser");
+    if (items.length) factorParts.push(`ipregistry 检测类型：${items.join("/")}`);
   }
   if (ip2locProxyItems.length === 0 && ip2loc.usageType && isRiskyUsageType(ip2loc.usageType)) {
     const usageDesc = {
@@ -393,7 +413,7 @@ async function fetchIpinfoIo(ip) {
   html += `<b><font color=#6959CD>ASN</font> : </b><font color=>${asnText}</font></br>`;
   html += `<b><font color=#6959CD>位置</font> : </b><font color=>${flag} ${country} ${city}</font></br>`;
   html += `<b><font color=#6959CD>类型</font> : </b><font color=>${hostingLine.replace("IP类型：", "")}</font></br>`;
-  
+
   // 多源评分
   html += `</br><b><font color=#FF6347>—— 多源评分 ——</font></b></br>`;
   for (const line of riskLines) {
@@ -401,7 +421,7 @@ async function fetchIpinfoIo(ip) {
     const result = rest.join("：");
     html += `<b>${name}</b>：${result}</br>`;
   }
-  
+
   // IP类型风险
   if (factorParts.length) {
     html += `</br><b><font color=#FF6347>—— IP类型风险 ——</font></b></br>`;
@@ -411,7 +431,7 @@ async function fetchIpinfoIo(ip) {
       html += `<b>${fname}</b>：${fresult}</br>`;
     }
   }
-  
+
   html += `</br><font color=#6959CD><b>节点</b> ➟ ${nodeName || "-"}</font>`;
   html += `</p>`;
 
