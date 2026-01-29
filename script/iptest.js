@@ -1,5 +1,6 @@
 const IPPURE_URL = "https://my.ippure.com/v1/info";
 const IPV4_API = "http://ip-api.com/json?lang=zh-CN";
+const IPAPI_IS_URL = "https://api.ipapi.is/";
 
 // 从环境参数获取节点名
 const nodeName = $environment.params.node;
@@ -293,11 +294,23 @@ async function fetchIpinfoIo(ip) {
 
 (async () => {
   let ip = null;
+  let cachedIpapiResponse = null;
+
   try {
     const { data: ipv4Data } = await httpGet(IPV4_API);
     const ipv4Json = safeJsonParse(ipv4Data);
     ip = ipv4Json?.query || ipv4Json?.ip || String(ipv4Data || "").trim();
   } catch (_) { }
+
+  if (!ip) {
+    try {
+      const { data } = await httpGet(IPAPI_IS_URL);
+      cachedIpapiResponse = safeJsonParse(data);
+      if (cachedIpapiResponse && cachedIpapiResponse.ip) {
+        ip = cachedIpapiResponse.ip;
+      }
+    } catch (_) { }
+  }
 
   if (!ip) {
     $done({ title: "IP 纯净度", content: "获取 IPv4 失败", icon: "exclamationmark.triangle.fill" });
@@ -312,7 +325,7 @@ async function fetchIpinfoIo(ip) {
   } catch (_) { }
 
   const tasks = {
-    ipapi: fetchIpapi(ip),
+    ipapi: cachedIpapiResponse ? Promise.resolve(cachedIpapiResponse) : fetchIpapi(ip),
     ip2locIo: fetchIp2locationIo(ip),
     ipinfoIo: fetchIpinfoIo(ip),
     dbipHtml: fetchDbipHtml(ip),
