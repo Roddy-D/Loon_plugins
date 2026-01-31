@@ -1,7 +1,7 @@
 const IPPURE_URL = "https://my.ippure.com/v1/info";
 const IPV4_API = "http://ip-api.com/json?lang=zh-CN";
 const IPAPI_IS_URL = "https://api.ipapi.is/";
-
+ 
 // 从环境参数获取节点名
 const nodeName = $environment.params.node;
 const maskIP = $persistentStore.read("MaskIP") === "true";
