@@ -4,6 +4,25 @@ const IPAPI_IS_URL = "https://api.ipapi.is/";
 
 // 从环境参数获取节点名
 const nodeName = $environment.params.node;
+const maskIP = $persistentStore.read("MaskIP") === "true";
+
+// 掩码函数
+function maskIpAddress(ip) {
+  if (!maskIP || !ip) return ip;
+  // 处理 IPv4
+  const parts = String(ip).split(".");
+  if (parts.length === 4) {
+    return `${parts[0]}.${parts[1]}.*.*`;
+  }
+  // 处理 IPv6
+  if (ip.includes(":")) {
+    const v6parts = ip.split(":");
+    if (v6parts.length >= 4) {
+      return `${v6parts.slice(0, 4).join(":")}:*`;
+    }
+  }
+  return ip;
+}
 
 function httpGet(url, headers = {}) {
   return new Promise((resolve, reject) => {
@@ -422,7 +441,7 @@ async function fetchIpinfoIo(ip) {
 
   // 构建 HTML 输出
   let html = `<p style="text-align: center; font-family: -apple-system; font-size: large; font-weight: thin">`;
-  html += `<b><font color=#6959CD>IP</font> : </b><font color=>${ip}</font></br>`;
+  html += `<b><font color=#6959CD>IP</font> : </b><font color=>${maskIpAddress(ip)}</font></br>`;
   html += `<b><font color=#6959CD>ASN</font> : </b><font color=>${asnText}</font></br>`;
   html += `<b><font color=#6959CD>位置</font> : </b><font color=>${flag} ${country} ${city}</font></br>`;
   html += `<b><font color=#6959CD>类型</font> : </b><font color=>${hostingLine.replace("IP类型：", "")}</font></br>`;
