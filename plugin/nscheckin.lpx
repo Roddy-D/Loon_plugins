@@ -1,0 +1,21 @@
+#!name=NodeSeek 签到增强版
+#!desc=NodeSeek 论坛每日自动签到，支持 TG 推送。开启抓取开关后访问个人主页即可获取 Cookie。
+#!author=Roddy-D[https://github.com/Roddy-D]
+#!icon=https://raw.githubusercontent.com/Roddy-D/Loon_plugins/refs/heads/main/icon/nscheckin.png
+#!date=2026-02-22
+
+[Argument]
+CRON_TIME = input, "1 0 * * *", tag=签到执行时间, desc=使用 Cron 表达式定期执行签到，如每晚零点执行: 1 0 * * *
+ENABLE_CAPTURE = switch, true, tag=开启 Cookie 抓取, desc=打开后去 NodeSeek 的获取页面可自动抓取 Cookie。抓到后请关闭。
+NS_COOKIE = input, "", tag=NodeSeek Cookie, desc=抓取后会自动保存，也可在此必填栏里手动填入完整 Cookie 
+TG_BOT_TOKEN = input, "", tag=TG Bot Token, desc=选填，Telegram 机器人的 Token
+TG_USER_ID = input, "", tag=TG User ID, desc=选填，接收消息的 Telegram User ID
+TG_NOTIFY_ONLY_FAIL = switch, false, tag=仅失败时通知, desc=开启后仅在签到失败、风控、异常时才推送 TG
+RANDOM_REWARD = switch, false, tag=随机奖励模式, desc=开启后进行随机抽奖
+
+[Script]
+http-request ^https:\/\/www\.nodeseek\.com\/api\/account\/getInfo\/\d+\?readme=1$ script-path=https://raw.githubusercontent.com/Roddy-D/Loon_plugins/refs/heads/main/script/nscheckin.js, requires-body=false, tag=NS签到获取Cookie, argument=[{ENABLE_CAPTURE}]
+cron {CRON_TIME} script-path=https://raw.githubusercontent.com/Roddy-D/Loon_plugins/refs/heads/main/script/nscheckin.js, tag=NS签到定时执行, argument=[{NS_COOKIE},{TG_BOT_TOKEN},{TG_USER_ID},{TG_NOTIFY_ONLY_FAIL},{RANDOM_REWARD}]
+
+[MITM]
+hostname = www.nodeseek.com
