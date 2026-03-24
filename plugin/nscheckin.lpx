@@ -1,8 +1,8 @@
 #!name=NodeSeek 签到增强版
-#!desc=NodeSeek 论坛每日自动签到，支持 TG 推送。开启抓取开关后访问个人主页即可获取 Cookie。
+#!desc=NodeSeek 论坛每日自动签到，支持 TG 推送。开启抓取开关后访问个人主页即可获取 Cookie。添加cookie过期前48小时重新登录提醒
 #!author=Roddy-D[https://github.com/Roddy-D]
 #!icon=https://raw.githubusercontent.com/Roddy-D/Loon_plugins/refs/heads/main/icon/nscheckin.png
-#!date=2026-02-22
+#!date=2026-03-23
 
 [Argument]
 CRON_TIME = input, "1 0 * * *", tag=签到执行时间, desc=使用 Cron 表达式定期执行签到，如每晚零点执行: 1 0 * * *
