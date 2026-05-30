@@ -15,8 +15,8 @@ TG_USER_ID = input, "", tag=TG User ID, desc=选填，接收消息的 Telegram U
 TG_NOTIFY_ONLY_FAIL = switch, false, tag=仅失败时通知, desc=开启后仅在签到失败、异常时才推送 TG
 
 [Script]
-http-request ^https:\/\/www\.v2ex\.com\/(mission|member).* script-path=https://raw.githubusercontent.com/Roddy-D/Loon_plugins/script/main/v2ex.js, requires-body=false, tag=V2EX签到获取Cookie, argument=[{ENABLE_CAPTURE}]
-cron {CRON_TIME} script-path=https://raw.githubusercontent.com/Roddy-D/Loon_plugins/script/main/v2ex.js, tag=V2EX签到定时执行, argument=[{V2EX_COOKIE},{TG_BOT_TOKEN},{TG_USER_ID},{TG_NOTIFY_ONLY_FAIL}]
+http-request ^https:\/\/www\.v2ex\.com\/(mission|member).* script-path=https://raw.githubusercontent.com/Roddy-D/Loon_plugins/refs/heads/main/script/v2ex.js, requires-body=false, tag=V2EX签到获取Cookie, argument=[{ENABLE_CAPTURE}]
+cron {CRON_TIME} script-path=https://raw.githubusercontent.com/Roddy-D/Loon_plugins/refs/heads/main/script/v2ex.js, tag=V2EX签到定时执行, argument=[{V2EX_COOKIE},{TG_BOT_TOKEN},{TG_USER_ID},{TG_NOTIFY_ONLY_FAIL}]
 
 [MITM]
 hostname = www.v2ex.com
