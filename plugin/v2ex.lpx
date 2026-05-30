@@ -1,0 +1,22 @@
+#!name=V2EX 每日签到增强版
+#!desc=V2EX 论坛每日自动签到领取铜币，支持 TG 推送。开启抓取开关后访问个人主页即可获取 Cookie。
+#!author=Roddy-D[https://github.com/Roddy-D/Loon_plugins]
+#!homepage=https://github.com/Roddy-D/Loon_plugins
+#!icon=https://raw.githubusercontent.com/lige47/QuanX-icon-rule/main/icon/04ProxySoft/V2ex.png
+#!date=2026-05-30
+#!tag=Check-in
+
+[Argument]
+CRON_TIME = input, "10 9 * * *", tag=签到执行时间, desc=使用 Cron 表达式定期执行签到，如每天 9:10 执行: 10 9 * * *
+ENABLE_CAPTURE = switch, true, tag=开启 Cookie 抓取, desc=打开后访问 V2EX 个人主页可自动抓取 Cookie。抓到后请关闭。
+V2EX_COOKIE = input, "", tag=V2EX Cookie, desc=抓取后会自动保存，也可在此手动填入完整 Cookie
+TG_BOT_TOKEN = input, "", tag=TG Bot Token, desc=选填，Telegram 机器人的 Token
+TG_USER_ID = input, "", tag=TG User ID, desc=选填，接收消息的 Telegram User ID
+TG_NOTIFY_ONLY_FAIL = switch, false, tag=仅失败时通知, desc=开启后仅在签到失败、异常时才推送 TG
+
+[Script]
+http-request ^https:\/\/www\.v2ex\.com\/(mission|member).* script-path=https://raw.githubusercontent.com/Roddy-D/test/main/v2ex.js, requires-body=false, tag=V2EX签到获取Cookie, argument=[{ENABLE_CAPTURE}]
+cron {CRON_TIME} script-path=https://raw.githubusercontent.com/Roddy-D/test/main/v2ex.js, tag=V2EX签到定时执行, argument=[{V2EX_COOKIE},{TG_BOT_TOKEN},{TG_USER_ID},{TG_NOTIFY_ONLY_FAIL}]
+
+[MITM]
+hostname = www.v2ex.com
