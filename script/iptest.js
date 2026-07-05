@@ -91,13 +91,21 @@ function gradeIpapi(j) {
 
 // IP2Location.io
 function parseIp2locationIo(data) {
-  if (!data) return { usageType: null, fraudScore: null, isProxy: false, proxyType: "-", threat: "-" };
+  if (!data) return {
+    usageType: null, fraudScore: null, isProxy: false, proxyType: "-", threat: "-",
+    country: null, countryCode: null, city: null, asn: null, asOrg: null
+  };
   const usageType = data.as_usage_type || null;
   const fraudScore = data.fraud_score ?? null;
   const isProxy = data.is_proxy || false;
   const proxyType = data.proxy_type || "-";
   const threat = data.threat || "-";
-  return { usageType, fraudScore, isProxy, proxyType, threat };
+  const country = data.country || null;
+  const countryCode = data.country_code || null;
+  const city = data.city || null;
+  const asn = data.asn || null;
+  const asOrg = data.as_org || null;
+  return { usageType, fraudScore, isProxy, proxyType, threat, country, countryCode, city, asn, asOrg };
 }
 
 function gradeIp2locationIo(fraudScore) {
@@ -276,12 +284,34 @@ async function fetchIp2locationIo(ip) {
   const threatMatch = html.match(/>Threat<\/label>\s*<p[^>]*>\s*([^<]+)/i);
   const threat = threatMatch ? threatMatch[1].trim() : "-";
 
+  // Country: >Country</label> ... <a ...>United States of America (US)</a>
+  const countryMatch = html.match(/>Country<\/label>[\s\S]{0,300}?<a[^>]*>([^(<]+)\(([A-Z]{2})\)<\/a>/i);
+  const country = countryMatch ? countryMatch[1].trim() : null;
+  const countryCode = countryMatch ? countryMatch[2].trim() : null;
+
+  // City: >City</label> <p class="ip-result">Los Angeles</p>
+  const cityMatch = html.match(/>City<\/label>\s*<p[^>]*>([^<]+)<\/p>/i);
+  const city = cityMatch ? cityMatch[1].trim() : null;
+
+  // ASN: >ASN</label> ... <a ...>25820</a>
+  const asnMatch = html.match(/>ASN<\/label>[\s\S]{0,300}?<a[^>]*>(\d+)<\/a>/i);
+  const asn = asnMatch ? asnMatch[1].trim() : null;
+
+  // AS (组织名): >AS</label> ... <a ...>IT7 Networks Inc</a>
+  const asOrgMatch = html.match(/>AS<\/label>[\s\S]{0,300}?<a[^>]*>([^<]+)<\/a>/i);
+  const asOrg = asOrgMatch ? asOrgMatch[1].trim() : null;
+
   return {
     as_usage_type: usageType,
     fraud_score: fraudScore,
     is_proxy: isProxy,
     proxy_type: proxyType,
-    threat: threat
+    threat: threat,
+    country,
+    country_code: countryCode,
+    city,
+    asn,
+    as_org: asOrg
   };
 }
 
@@ -365,14 +395,37 @@ async function fetchIpinfoIo(ip) {
   }
 
   const ipapiData = ok.ipapi || {};
-  const asnText = ipapiData.asn?.asn ? `AS${ipapiData.asn.asn} ${ipapiData.asn.org || ""}`.trim() : "-";
-  const countryCode = ipapiData.location?.country_code || "";
-  const country = ipapiData.location?.country || "";
-  const city = ipapiData.location?.city || "";
-  const flag = flagEmoji(countryCode);
-
   const ip2loc = parseIp2locationIo(ok.ip2locIo);
   const hostingLine = ip2locationHostingText(ip2loc.usageType);
+
+  // ipapi 是否有效返回了地理信息/ASN，没有则回落到 IP2Location
+  const ipapiHasLocation = !!(ipapiData.location?.country_code || ipapiData.location?.country);
+  const ipapiHasAsn = !!ipapiData.asn?.asn;
+
+  let countryCode, country, city;
+  if (ipapiHasLocation) {
+    countryCode = ipapiData.location?.country_code || "";
+    country = ipapiData.location?.country || "";
+    city = ipapiData.location?.city || "";
+  } else if (ip2loc.country || ip2loc.city) {
+    countryCode = ip2loc.countryCode || "";
+    country = ip2loc.country || "";
+    city = ip2loc.city || "";
+  } else {
+    countryCode = "";
+    country = "";
+    city = "";
+  }
+  const flag = flagEmoji(countryCode);
+
+  let asnText;
+  if (ipapiHasAsn) {
+    asnText = `AS${ipapiData.asn.asn} ${ipapiData.asn.org || ""}`.trim();
+  } else if (ip2loc.asn) {
+    asnText = `AS${ip2loc.asn} ${ip2loc.asOrg || ""}`.trim();
+  } else {
+    asnText = "-";
+  }
 
   const grades = [];
   grades.push(gradeIppure(ippureFraudScore));
