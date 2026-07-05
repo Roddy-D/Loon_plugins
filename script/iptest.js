@@ -235,7 +235,7 @@ async function fetchIpregistry(ip) {
     const { data: html } = await httpGet("https://ipregistry.co", {
       "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
     });
-    const keyMatch = String(html).match(/apiKey="([a-zA-Z0-9]+)"/);
+    const keyMatch = String(html).match(/api-?key="([a-zA-Z0-9]+)"/i);
     if (keyMatch) apiKey = keyMatch[1];
   } catch (_) { }
 
