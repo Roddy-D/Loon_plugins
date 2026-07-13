@@ -191,7 +191,7 @@ function gradeScamalytics(html) {
   return { sev: 0, text: `Scamalytics：✅ 低风险 (${s})` };
 }
 
-// ipregistry —— 基于 security 字段对象（is_xxx 布尔值）进行评分
+// ipregistry
 function gradeIpregistry(sec) {
   if (!sec) return { sev: 2, text: "ipregistry：获取失败" };
 
@@ -238,7 +238,7 @@ async function fetchScamalyticsHtml(ip) {
 // 从 ipregistry.co/{ip} 详情页里，按字段名提取 Yes/No 布尔值
 function extractIpregistrySecurityFlag(html, fieldName) {
   const re = new RegExp(
-    `>${fieldName}</span>[\\s\\S]{0,400}?<div class="(?:positive|negative)">[\\s\\S]{0,150}?(Yes|No)</div>`,
+    `${fieldName}</span>[\\s\\S]{0,300}?<div class="(?:positive|negative)">[\\s\\S]{0,800}?(Yes|No)</div>`,
     "i"
   );
   const m = html.match(re);
