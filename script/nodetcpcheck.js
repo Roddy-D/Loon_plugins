@@ -373,7 +373,7 @@ function render(node, direct, remote) {
     } else if (direct.ok && node.ok) {
       conclusion = "✅ 当前节点一切正常，可顺利连通";
     } else if (!direct.ok) {
-      conclusion = "⚠️ 本机网络异常，无法连接外部网络";
+      conclusion = "⚠️ 本机网络异常，可能为网络波动导致";
     } else if (!overseasOk && remote.overseasTotalCount > 0) {
       conclusion = `💤 节点疑似已离线\n(海外探针仅 ${remote.overseasReachableCount}/${remote.overseasTotalCount} 个可达，非定向阻断特征)`;
     } else {
