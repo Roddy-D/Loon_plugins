@@ -421,7 +421,7 @@ function render(node, direct, remote) {
   }
 
   if (isUdpProtocol) {
-    conclusion += "\n\nℹ️ 该节点为 UDP 协议，远端检测使用 TCP 探测，无结果属于正常现象";
+    conclusion += "\nℹ️ 该节点为 UDP 协议，远端检测使用 TCP 探测，无结果属于正常现象";
   }
 
   textParts.push(`【诊断结论】\n${conclusion}`);
