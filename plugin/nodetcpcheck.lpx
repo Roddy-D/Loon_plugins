@@ -1,5 +1,5 @@
 #!name=节点连通性测试
-#!desc=检测当前节点是否被『运营商/GFW』阻断。基于 Globalping 全球探针网络，对比大陆（上海/北京/广东）与海外（香港/台湾/东京/首尔/洛杉矶/波士顿/法兰克福/阿姆斯特丹）多地视角的连通性，辅助判断是否遭到定向阻断。在节点（策略）页面选择一个节点长按，出现菜单后点击。
+#!desc=检测当前节点是否被『运营商/GFW』阻断。基于 Globalping 全球探针网络，对比大陆（上海/北京/广东）与海外（香港/台湾/东京/首尔/洛杉矶/波士顿/法兰克福/阿姆斯特丹）多地视角的连通性，辅助判断是否遭到定向阻断。在节点（策略）页面选择一个节点长按，出现菜单后点击。MaskIP:是否对IP后一半进行打码（需要截图分享则打开）
 #!author=Roddy-D[https://github.com/Roddy-D]
 #!select = MaskIP,false,true
 #!icon=https://raw.githubusercontent.com/Roddy-D/Loon_plugins/refs/heads/main/icon/nodetcpcheck.png
