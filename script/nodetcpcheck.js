@@ -374,11 +374,11 @@ function render(node, direct, remote) {
   let remoteText = "";
   let remoteHtml = "";
   if (!remote.available) {
-    remoteText = `【远端探测】: ⚠️ 未完成\n └ ${remote.error || "未知原因"}`;
-    remoteHtml = `<b>远端探测</b>: ⚠️ 未完成<br/><small style="color: gray;">${escapeHtml(remote.error)}</small>`;
+    remoteText = `【入口远端探测】: ⚠️ 未完成\n └ ${remote.error || "未知原因"}`;
+    remoteHtml = `<b>入口远端探测</b>: ⚠️ 未完成<br/><small style="color: gray;">${escapeHtml(remote.error)}</small>`;
   } else {
-    remoteText = `【远端探测】: ${remote.reachable ? "✅ 可达" : "❌ 不可达"}`;
-    remoteHtml = `<b>远端探测</b>: ${remote.reachable ? "✅ 可达" : "❌ 不可达"}`;
+    remoteText = `【入口远端探测】: ${remote.reachable ? "✅ 可达" : "❌ 不可达"}`;
+    remoteHtml = `<b>入口远端探测</b>: ${remote.reachable ? "✅ 可达" : "❌ 不可达"}`;
 
     if (remote.data && remote.data.length > 0) {
       remoteText += "\n";
