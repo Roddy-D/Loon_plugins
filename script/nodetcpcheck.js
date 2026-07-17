@@ -1,6 +1,7 @@
 const IP_API = "http://ip-api.com/json?lang=zh-CN";
+const IP_API_BACKUP = "https://ipinfo.io/json"; // 备用数据源
 const GLOBALPING_API = "https://api.globalping.io/v1/measurements";
-// 大陆探测点（
+// 大陆探测点
 const CN_LOCATIONS = [
   { magic: "shanghai", limit: 1 },
   { magic: "beijing", limit: 1 },
@@ -88,7 +89,7 @@ if (!nodeName) {
 async function run() {
   try {
     // 并行执行：节点连通性测试、本机直连测试、远端服务器可用性测试
-    const [nodeRes, directRes, remoteRes] = await Promise.all([checkGeo(nodeName), checkGeo("DIRECT"), checkRemote(nodeInfo)]);
+    const [nodeRes, directRes, remoteRes] = await Promise.all([checkGeo(nodeName), checkDirectConnectivity(), checkRemote(nodeInfo)]);
 
     render(nodeRes, directRes, remoteRes);
   } catch (error) {
@@ -107,6 +108,41 @@ async function checkGeo(node) {
     return { ok: true, data };
   } catch (error) {
     return { ok: false, error: error.message };
+  }
+}
+
+// 本机直连检测：两个数据源并发竞速，任一成功即视为本机网络正常，
+// 避免 ip-api.com 单点超时/被限流导致的误判。
+function raceForFirstSuccess(promises) {
+  return new Promise((resolve, reject) => {
+    let remaining = promises.length;
+    const errors = [];
+    promises.forEach((p) => {
+      p.then(resolve).catch((err) => {
+        errors.push(err);
+        remaining--;
+        if (remaining === 0) {
+          reject(errors[0] || new Error("全部请求失败"));
+        }
+      });
+    });
+  });
+}
+
+async function checkDirectConnectivity() {
+  const attempts = [
+    requestJson(IP_API, "DIRECT", "GET").then((data) => {
+      if (data && data.status === "fail") throw new Error(data.message || "IP 查询失败");
+      return data;
+    }),
+    requestJson(IP_API_BACKUP, "DIRECT", "GET")
+  ];
+
+  try {
+    const data = await raceForFirstSuccess(attempts);
+    return { ok: true, data };
+  } catch (error) {
+    return { ok: false, error: error.message || "本机网络请求全部失败" };
   }
 }
 
