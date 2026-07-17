@@ -1,5 +1,5 @@
 #!name=节点TCPing连通性测试
-#!desc=检测当前节点的入口是否被运营商/GFW阻断，仅TCP协议/监听着同端口TCP的UDP协议有效。在节点（策略）页面选择一个节点长按，出现菜单后点击。MaskIP:是否对IP后一半进行打码（需要截图分享则打开）
+#!desc=检测当前节点的入口是否被运营商/GFW阻断，仅TCP协议/监听着同端口TCP的UDP协议有效。在节点（策略）页面选择一个节点长按，出现菜单后点击。MaskIP:是否对IP后一半进行打码（需要截图分享则打开）。PROXY：用于对查询tcping的网站api发起连接，当被限速时可以切换。
 #!author=Roddy-D[https://github.com/Roddy-D]
 #!select = MaskIP,false,true
 #!icon=https://raw.githubusercontent.com/Roddy-D/Loon_plugins/refs/heads/main/icon/nodetcpcheck.png
