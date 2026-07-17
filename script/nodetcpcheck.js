@@ -112,7 +112,6 @@ async function checkGeo(node) {
 }
 
 // 本机直连检测：两个数据源并发竞速，任一成功即视为本机网络正常，
-// 避免 ip-api.com 单点超时/被限流导致的误判。
 function raceForFirstSuccess(promises) {
   return new Promise((resolve, reject) => {
     let remaining = promises.length;
@@ -396,6 +395,10 @@ function render(node, direct, remote) {
   htmlParts.push(remoteHtml);
 
   // 4. 诊断结论
+  // Hysteria2/TUIC 基于 QUIC，走 UDP 传输；本脚本的远端探测用的是 TCP 握手，对这类节点天然不适用，TCP 不通不代表节点真的不可用
+  const nodeTypeStr = String(nodeInfo.type || "").toLowerCase();
+  const isUdpProtocol = nodeTypeStr.includes("hysteria") || nodeTypeStr.includes("tuic");
+
   let conclusion = "";
   if (!remote.available) {
     conclusion = "❓ 数据不足，无法完成远端探测判断";
@@ -415,6 +418,10 @@ function render(node, direct, remote) {
     } else {
       conclusion = "❓ 数据不足，无法精确判断";
     }
+  }
+
+  if (isUdpProtocol) {
+    conclusion += "\n\nℹ️ 该节点为 UDP 协议 (Hysteria2/TUIC)，远端检测使用 TCP 探测，无结果属于正常现象";
   }
 
   textParts.push(`【诊断结论】\n${conclusion}`);
