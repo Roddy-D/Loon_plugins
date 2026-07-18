@@ -22,7 +22,7 @@ const GLOBALPING_LOCATIONS = [...CN_LOCATIONS, ...OVERSEAS_LOCATIONS];
 // 海外点位中至少需要多少个可达，才算正常
 const OVERSEAS_REACHABLE_THRESHOLD = 5;
 const CN_CITIES = new Set(CN_LOCATIONS.map((l) => l.magic.toLowerCase()));
-const REQUEST_TIMEOUT = 10000; // 请求超时时间(毫秒)
+const REQUEST_TIMEOUT = 5000; // 请求超时时间(毫秒)
 const RESULT_DELAY = 4000; // 首次等待探测时间(毫秒)
 const RESULT_RETRY_DELAY = 3000; // 重试等待时间(毫秒)
 const RESULT_MAX_RETRIES = 3; // 轮询最大重试次数
@@ -200,7 +200,7 @@ async function checkRemote(info) {
       overseasTotalCount: result.overseasTotalCount
     };
   } catch (error) {
-    return { available: false, reachable: false, target, error: `不可用: ${error.message}` };
+    return { available: false, reachable: false, target, error: `不可用: ${error.message}，请检查插件内PROXY分配的策略节点是否可用` };
   }
 }
 
