@@ -335,6 +335,16 @@ function escapeHtml(str) {
     .replace(/'/g, "&#39;");
 }
 
+// 判断某条错误信息是否为 Loon/iOS 层输出的原始报错日志。
+function isRawLogError(msg) {
+  return /HTTPClient request failed|Error Domain=|NSLocalized|Socket closed|Code=\s*\d/i.test(String(msg || ""));
+}
+
+// 判断错误是否与超时相关
+function isTimeoutError(msg) {
+  return /timeout|超时/i.test(String(msg || ""));
+}
+
 // === 渲染与输出 UI ===
 
 function render(node, direct, remote) {
@@ -353,7 +363,8 @@ function render(node, direct, remote) {
     nodeHtml += `<br/><b>IP</b>: ${escapeHtml(maskedIp)}`;
     if (loc) nodeHtml += `<br/><b>位置</b>: ${escapeHtml(loc)}`;
     nodeHtml += `<br/><b>ISP</b>: ${escapeHtml(d.isp || d.organization)}`;
-  } else if (node.error) {
+  } else if (node.error && !isRawLogError(node.error)) {
+    // 仅保留非日志类的友好提示，原始报错日志不显示
     nodeText += `\n └ ${node.error}`;
     nodeHtml += `<br/><small style="color: gray;">${escapeHtml(node.error)}</small>`;
   }
@@ -363,7 +374,8 @@ function render(node, direct, remote) {
   // 2. 本机网络块
   let directText = `【本机网络】: ${direct.ok ? "✅ 正常" : "❌ 异常"}`;
   let directHtml = `<b>本机网络</b>: ${direct.ok ? "✅ 正常" : "❌ 异常"}`;
-  if (!direct.ok && direct.error) {
+  if (!direct.ok && direct.error && !isRawLogError(direct.error)) {
+    // 原始报错日志不显示，只保留状态标识
     directText += `\n └ ${direct.error}`;
     directHtml += `<br/><small style="color: gray;">${escapeHtml(direct.error)}</small>`;
   }
@@ -374,8 +386,19 @@ function render(node, direct, remote) {
   let remoteText = "";
   let remoteHtml = "";
   if (!remote.available) {
-    remoteText = `【入口远端探测】: ⚠️ 未完成\n └ ${remote.error || "未知原因"}`;
-    remoteHtml = `<b>入口远端探测</b>: ⚠️ 未完成<br/><small style="color: gray;">${escapeHtml(remote.error)}</small>`;
+    let remoteDetail;
+    if (isRawLogError(remote.error)) {
+      remoteDetail = isTimeoutError(remote.error) ? "请查看插件内PROXY分配的节点是否连通" : "";
+    } else {
+      remoteDetail = remote.error || "";
+    }
+
+    remoteText = `【入口远端探测】: ⚠️ 未完成`;
+    remoteHtml = `<b>入口远端探测</b>: ⚠️ 未完成`;
+    if (remoteDetail) {
+      remoteText += `\n └ ${remoteDetail}`;
+      remoteHtml += `<br/><small style="color: gray;">${escapeHtml(remoteDetail)}</small>`;
+    }
   } else {
     remoteText = `【入口远端探测】: ${remote.reachable ? "✅ 可达" : "❌ 不可达"}`;
     remoteHtml = `<b>入口远端探测</b>: ${remote.reachable ? "✅ 可达" : "❌ 不可达"}`;
@@ -439,7 +462,7 @@ function render(node, direct, remote) {
   // 完成输出
   $done({
     title: "🌐 节点阻断检测报告",
-    content: textParts.join("\n\n"), // 为不支持 HTML 的视图提供完美的纯文本降级
+    content: textParts.join("\n\n"),
     htmlMessage: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 1.6; color: inherit; word-break: break-all;">${htmlParts.join(
       "<br/><br/>"
     )}</div>`
